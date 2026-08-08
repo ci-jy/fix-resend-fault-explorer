@@ -17,6 +17,10 @@
       <artifactId>quickfixj-core</artifactId>
     </dependency>
     <dependency>
+      <groupId>org.quickfixj</groupId>
+      <artifactId>quickfixj-messages-fix44</artifactId>
+    </dependency>
+    <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-nop</artifactId>
     </dependency>

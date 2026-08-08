@@ -2482,7 +2482,14 @@ public class Session implements Closeable {
         resendRequest.setInt(BeginSeqNo.FIELD, beginSeqNo);
         resendRequest.setInt(EndSeqNo.FIELD, endSeqNo);
         initializeHeader(resendRequest.getHeader());
-        sendRaw(resendRequest, 0);
+        if (!sendRaw(resendRequest, 0)) {
+            // QFJ #1114: the request never reached the wire (e.g. the responder was
+            // cleared by a concurrent disconnect). Do not record the range as requested,
+            // otherwise the next gap after re-logon is never requested again.
+            getLog().onErrorEvent("Failed to send ResendRequest FROM: " + beginSeqNo + " TO: "
+                    + (endSeqNo == 0 ? "infinity" : endSeqNo) + "; resend range not recorded");
+            return;
+        }
         getLog().onEvent("Sent ResendRequest FROM: " + beginSeqNo + " TO: " + (endSeqNo == 0 ? "infinity" : endSeqNo));
         int resendRangeEndSeqNum = msgSeqNum - 1;
         int resendRangeCurrentSeqNum = resendRequestChunkSize == 0 ? 0 : lastEndSeqNoSent;

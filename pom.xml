@@ -30,6 +30,11 @@
         <version>${quickfixj.version}</version>
       </dependency>
       <dependency>
+        <groupId>org.quickfixj</groupId>
+        <artifactId>quickfixj-messages-fix44</artifactId>
+        <version>${quickfixj.version}</version>
+      </dependency>
+      <dependency>
         <groupId>org.slf4j</groupId>
         <artifactId>slf4j-nop</artifactId>
         <version>1.7.36</version>
