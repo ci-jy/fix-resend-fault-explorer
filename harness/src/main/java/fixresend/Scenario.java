@@ -62,6 +62,7 @@ public final class Scenario implements AutoCloseable {
     private final Deque<Event> events = new ArrayDeque<>();
     private final Deque<Event> held = new ArrayDeque<>();
     private Side stalled;
+    private boolean stallAcceptorOnResend;
     private final Map<Side, Session> sessions = new EnumMap<>(Side.class);
     private final Map<Side, Shim> shims = new EnumMap<>(Side.class);
     private final boolean captureLog;
@@ -114,17 +115,31 @@ public final class Scenario implements AutoCloseable {
                 session(Side.ACCEPTOR).next();
                 pump();
             }
-            stalled = null;
-            while (!held.isEmpty()) {
-                events.addFirst(held.pollLast());
-            }
-            pump();
+            releaseStall();
             // planned Logout and re-Logon in the middle of the stream
             session(Side.INITIATOR).logout("planned");
             runFor(3);
+            int next = firstHalf + 1;
+            if (next <= config.appMessages()) {
+                // orders entered while the session is down are stored and recovered after re-logon
+                submit(Side.INITIATOR, next);
+                submit(Side.ACCEPTOR, next);
+                next++;
+            }
+            // with a burst, the acceptor's inbound path congests right after the initiator asks
+            // for the gap, so the acceptor keeps streaming while that request is unanswered
+            stallAcceptorOnResend = config.burst() > 0;
             session(Side.INITIATOR).logon();
             runFor(RECONNECT_SECONDS + 3);
-            for (int i = firstHalf + 1; i <= config.appMessages(); i++) {
+            if (config.burst() > 0) {
+                for (int b = 1; b <= config.burst(); b++) {
+                    submit(Side.ACCEPTOR, "B" + b);
+                    pump();
+                }
+                stallAcceptorOnResend = false;
+                releaseStall();
+            }
+            for (int i = next; i <= config.appMessages(); i++) {
                 submitPair(i);
             }
             runFor(2);
@@ -145,8 +160,21 @@ public final class Scenario implements AutoCloseable {
         tick();
     }
 
+    private void releaseStall() {
+        stalled = null;
+        while (!held.isEmpty()) {
+            events.addFirst(held.pollLast());
+        }
+        pump();
+    }
+
     private void submit(Side side, int i) {
-        String id = side.shortName() + "-" + i;
+        submit(side, Integer.toString(i));
+    }
+
+    private void submit(Side side, String n) {
+        String id = side.shortName() + "-" + n;
+        int i = Math.floorMod(n.hashCode(), 9) + 1;
         Message m = new Message();
         m.getHeader().setString(35, "D");
         m.setString(11, id);
@@ -386,6 +414,10 @@ public final class Scenario implements AutoCloseable {
                 throw new IllegalStateException("transport failed at send #" + index, e);
             }
             boolean transmitted = cut == null || cut == CutMode.AFTER;
+            if (stallAcceptorOnResend && side == Side.INITIATOR && "2".equals(FixFrames.field(data, 35))) {
+                stalled = Side.ACCEPTOR;
+                stallAcceptorOnResend = false;
+            }
             trace.outbound.add(new OutboundRecord(index, side, connectionId, FixFrames.intField(data, 34),
                     FixFrames.field(data, 35), "Y".equals(FixFrames.field(data, 43)),
                     FixFrames.intField(data, 7), cut, transmitted, received != null));

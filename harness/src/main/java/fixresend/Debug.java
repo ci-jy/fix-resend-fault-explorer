@@ -6,8 +6,14 @@ public final class Debug {
     }
 
     public static void main(String[] args) {
-        Config config = new Config(Integer.parseInt(args[0]), args[1].equals("Y"), StoreType.valueOf(args[2]));
-        Schedule schedule = Schedule.parse(String.join(" ", java.util.Arrays.copyOfRange(args, 3, args.length)));
+        int burst = 0;
+        int from = 3;
+        if (args.length > 3 && args[3].startsWith("burst=")) {
+            burst = Integer.parseInt(args[3].substring(6));
+            from = 4;
+        }
+        Config config = new Config(Integer.parseInt(args[0]), args[1].equals("Y"), StoreType.valueOf(args[2]), burst);
+        Schedule schedule = Schedule.parse(String.join(" ", java.util.Arrays.copyOfRange(args, from, args.length)));
         RunTrace t;
         try (Scenario s = new Scenario(config, schedule, new InJvmTransport(), true)) {
             t = s.execute();
