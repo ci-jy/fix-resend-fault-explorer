@@ -1,12 +1,12 @@
 # Disconnect-point exploration summary
 
-QuickFIX/J 2.3.2, FIX.4.4, every single and double disconnect point (cut before or after each outbound send, both sides), message stores: [MEMORY, FILE], up to 4 application messages per side plus a 5-message congested burst.
+QuickFIX/J 2.3.2, FIX.4.4, every single and double disconnect point (cut before or after each outbound send, both sides), message stores: [MEMORY, FILE], up to 5 application messages per side plus a 5-message congested burst.
 
 | Build | Schedules explored | Losing messages | Duplicating messages | Not recovered | Lost messages (total) | ResendRequests sent | Duplicate ResendRequests | Duplicate ResendRequests (burst runs) |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| stock 2.3.2 | 11386 | 1084 | 0 | 1170 | 1808 | 42100 | 0 | 0 / 3802 runs |
-| stock + SendRedundantResendRequests=Y | 16594 | 0 | 0 | 0 | 0 | 98554 | 35120 | 35120 / 9382 runs |
-| patched (#1114 fix) | 10906 | 0 | 0 | 12 | 0 | 42578 | 0 | 0 / 3694 runs |
+| stock 2.3.2 | 14592 | 1398 | 0 | 1484 | 2400 | 55538 | 0 | 0 / 3802 runs |
+| stock + SendRedundantResendRequests=Y | 19692 | 0 | 0 | 0 | 0 | 112218 | 35120 | 35120 / 9382 runs |
+| patched (#1114 fix) | 14004 | 0 | 0 | 12 | 0 | 56242 | 0 | 0 / 3694 runs |
 
 A schedule is a list of `send#:MODE` disconnect points; send numbers count outbound sends across both sessions. BEFORE = the drop is processed before the write (Responder.send returns false), AFTER = the write is delivered, then the connection drops.
 
@@ -24,21 +24,21 @@ Shortest schedule (fewest disconnects, then fewest application messages) per bui
 
 | Faulted message(s) | Losing schedules |
 |---|---:|
-| A NewOrderSingle BEFORE; A Logon BEFORE | 42 |
-| A NewOrderSingle BEFORE; A ResendRequest BEFORE | 42 |
-| A NewOrderSingle AFTER; A Logon BEFORE | 32 |
-| A NewOrderSingle AFTER; A ResendRequest BEFORE | 32 |
-| A NewOrderSingle BEFORE; I ResendRequest BEFORE | 32 |
-| A NewOrderSingle AFTER; I ResendRequest BEFORE | 24 |
-| I Heartbeat AFTER; A Logon BEFORE | 24 |
-| I Heartbeat AFTER; A ResendRequest BEFORE | 24 |
-| I Heartbeat AFTER; I ResendRequest BEFORE | 24 |
-| I Heartbeat BEFORE; A Logon BEFORE | 24 |
-| I Heartbeat BEFORE; A ResendRequest BEFORE | 24 |
-| I Heartbeat BEFORE; I ResendRequest BEFORE | 24 |
-| I NewOrderSingle AFTER; I ResendRequest BEFORE | 22 |
-| I NewOrderSingle BEFORE; A Logon BEFORE | 22 |
-| I NewOrderSingle BEFORE; A ResendRequest BEFORE | 22 |
+| A NewOrderSingle BEFORE; A Logon BEFORE | 52 |
+| A NewOrderSingle BEFORE; A ResendRequest BEFORE | 52 |
+| A NewOrderSingle AFTER; A Logon BEFORE | 42 |
+| A NewOrderSingle AFTER; A ResendRequest BEFORE | 42 |
+| A NewOrderSingle BEFORE; I ResendRequest BEFORE | 42 |
+| A NewOrderSingle AFTER; I ResendRequest BEFORE | 32 |
+| I NewOrderSingle AFTER; I ResendRequest BEFORE | 32 |
+| I NewOrderSingle BEFORE; A Logon BEFORE | 32 |
+| I NewOrderSingle BEFORE; A ResendRequest BEFORE | 32 |
+| I NewOrderSingle BEFORE; I ResendRequest BEFORE | 32 |
+| I Heartbeat AFTER; A Logon BEFORE | 30 |
+| I Heartbeat AFTER; A ResendRequest BEFORE | 30 |
+| I Heartbeat AFTER; I ResendRequest BEFORE | 30 |
+| I Heartbeat BEFORE; A Logon BEFORE | 30 |
+| I Heartbeat BEFORE; A ResendRequest BEFORE | 30 |
 
 ## Checks
 
