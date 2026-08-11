@@ -4,8 +4,8 @@ Finds every disconnect point at which a QuickFIX/J FIX session silently loses or
 
 ## Results
 
-- **Stock QuickFIX/J 2.3.2 loses orders in 1,398 of 14,592 disconnect schedules**, including the single-disconnect #1114 case (a ResendRequest cut by a connection drop).
-- **The fix loses and duplicates 0 messages across all 14,004 schedules** of the patched build, checked against a FIX gap-fill reference model.
+- **Stock QuickFIX/J 2.3.2 loses orders in 1,084 of 11,386 disconnect schedules**, including the single-disconnect #1114 case (a ResendRequest cut by a connection drop).
+- **The fix loses and duplicates 0 messages across all 10,906 schedules** of the patched build, checked against a FIX gap-fill reference model.
 - **The `SendRedundantResendRequests=Y` workaround sends 35,120 duplicate ResendRequests; the fix sends 0** in the same congested-burst runs.
 - **60 sampled schedules over real loopback TCP give the same outcome as the in-JVM runs**, including mid-frame cuts made by a FIX-aware NIO proxy.
 
@@ -60,15 +60,15 @@ It also adds `SessionResendRequestNotSentTest` (JUnit 4, the framework quickfixj
 
 ## Full results
 
-From `bash scripts/explore.sh --max-app-messages 5 --disconnects 2 --check` (memory and file stores, 1-5 orders per side plus the burst variant; see [results/summary.md](results/summary.md)):
+From `bash scripts/explore.sh --max-app-messages 4 --disconnects 2 --check` (memory and file stores, 1-4 orders per side plus the burst variant; see [results/summary.md](results/summary.md)):
 
 | Build | Schedules | Losing messages | Duplicating | Not recovered | Lost messages | ResendRequests sent | Duplicate ResendRequests |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| stock 2.3.2 | 14,592 | 1,398 | 0 | 1,484 | 2,400 | 55,538 | 0 |
-| stock + SendRedundantResendRequests=Y | 19,692 | 0 | 0 | 0 | 0 | 112,218 | 35,120 |
-| patched (#1114 fix) | 14,004 | 0 | 0 | 12 | 0 | 56,242 | 0 |
+| stock 2.3.2 | 11,386 | 1,084 | 0 | 1,170 | 1,808 | 42,100 | 0 |
+| stock + SendRedundantResendRequests=Y | 16,594 | 0 | 0 | 0 | 0 | 98,554 | 35,120 |
+| patched (#1114 fix) | 10,906 | 0 | 0 | 12 | 0 | 42,578 | 0 |
 
-Schedule counts differ by build because each build sends a different number of messages, and so has a different number of disconnect points. In stock, 1,378 of the 1,398 losing schedules end with a BEFORE cut at a ResendRequest or a Logon response; `results/summary.md` breaks them down by faulted message. A Logon cut loses messages through the same path: `nextLogon` continues into `doTargetTooHigh`, and the ResendRequest goes to a session that has already disconnected. All of them recover with the fix.
+Schedule counts differ by build because each build sends a different number of messages, and so has a different number of disconnect points. In stock, 1,068 of the 1,084 losing schedules end with a BEFORE cut at a ResendRequest or a Logon response; `results/summary.md` breaks them down by faulted message. A Logon cut loses messages through the same path: `nextLogon` continues into `doTargetTooHigh`, and the ResendRequest goes to a session that has already disconnected. All of them recover with the fix.
 
 Shortest reproducers: `15:BEFORE` with 2 orders per side (single cut at the acceptor's ResendRequest) and `14:BEFORE` (cut at the acceptor's Logon response). Both lose order `I-2`.
 
@@ -99,9 +99,9 @@ mvn -B verify          # ~25 s
 
 ## Limitations and next steps
 
-- **Residual finding in the patched build (not fixed)**: 12 of 14,004 patched schedules lose no orders, but the session never resynchronises (`NOT_RECOVERED`). The minimal case is `14:BEFORE 15:AFTER`. When the acceptor's Logon response fails, `nextLogon` keeps running after the disconnect has cleared the queue. It re-enqueues the stale Logon, which is later processed on a new connection, and the session then waits forever for a gap that has already been filled. This is the same family as #1243. Per scope it is documented here and not patched; a guard in `nextLogon`/`enqueueMessage` for a session that has lost its responder would be the next fix to try.
+- **Residual finding in the patched build (not fixed)**: 12 of 10,906 patched schedules lose no orders, but the session never resynchronises (`NOT_RECOVERED`). The minimal case is `14:BEFORE 15:AFTER`. When the acceptor's Logon response fails, `nextLogon` keeps running after the disconnect has cleared the queue. It re-enqueues the stale Logon, which is later processed on a new connection, and the session then waits forever for a gap that has already been filled. This is the same family as #1243. Per scope it is documented here and not patched; a guard in `nextLogon`/`enqueueMessage` for a session that has lost its responder would be the next fix to try.
 - The fix stops the range from being recorded when the write fails *synchronously*. A write accepted by MINA and lost later in the socket buffer is not covered. That case is fixed by the next Logon's sequence check, which the AFTER cuts exercise.
-- Only FIX.4.4, one session pair, at most two disconnects per run, and up to 5 orders per side (plus a 5-order burst). Settings not swept: `ResetOnLogon`, `PersistMessages=N`, chunked resends (`ResendRequestChunkSize`), `EnableNextExpectedMsgSeqNum`.
+- Only FIX.4.4, one session pair, at most two disconnects per run, and up to 4 orders per side in the committed results (the explorer accepts more; plus a 5-order burst). Settings not swept: `ResetOnLogon`, `PersistMessages=N`, chunked resends (`ResendRequestChunkSize`), `EnableNextExpectedMsgSeqNum`.
 - File-store runs reuse one session object across reconnects. They test the store as written, but not a process restart that reloads it. Adding a "restart" fault that rebuilds the sessions from the file store is the natural next step.
 - Real-TCP confirmation runs a sample of 60 schedules plus two mid-frame cases, not the whole space. It uses the harness's own socket transport rather than QuickFIX/J's MINA `SocketInitiator`/`SocketAcceptor`.
 - #888 and #621 are out of scope and not exercised.
