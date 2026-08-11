@@ -105,3 +105,5 @@ mvn -B verify          # ~25 s
 - File-store runs reuse one session object across reconnects. They test the store as written, but not a process restart that reloads it. Adding a "restart" fault that rebuilds the sessions from the file store is the natural next step.
 - Real-TCP confirmation runs a sample of 60 schedules plus two mid-frame cases, not the whole space. It uses the harness's own socket transport rather than QuickFIX/J's MINA `SocketInitiator`/`SocketAcceptor`.
 - #888 and #621 are out of scope and not exercised.
+
+Project period: 2026-08-08 to 2026-08-11.
