@@ -68,7 +68,7 @@ From `bash scripts/explore.sh --max-app-messages 5 --disconnects 2 --check` (mem
 | stock + SendRedundantResendRequests=Y | 19,692 | 0 | 0 | 0 | 0 | 112,218 | 35,120 |
 | patched (#1114 fix) | 14,004 | 0 | 0 | 12 | 0 | 56,242 | 0 |
 
-Schedule counts differ by build because each build sends a different number of messages, and so has a different number of disconnect points. In stock, the losing schedules always end with a ResendRequest that is not sent. This happens either when that ResendRequest itself is cut, or when the acceptor's Logon response is cut: `nextLogon` continues into `doTargetTooHigh`, and the request goes to a session that has already disconnected.
+Schedule counts differ by build because each build sends a different number of messages, and so has a different number of disconnect points. In stock, 1,378 of the 1,398 losing schedules end with a BEFORE cut at a ResendRequest or a Logon response; `results/summary.md` breaks them down by faulted message. A Logon cut loses messages through the same path: `nextLogon` continues into `doTargetTooHigh`, and the ResendRequest goes to a session that has already disconnected. All of them recover with the fix.
 
 Shortest reproducers: `15:BEFORE` with 2 orders per side (single cut at the acceptor's ResendRequest) and `14:BEFORE` (cut at the acceptor's Logon response). Both lose order `I-2`.
 
